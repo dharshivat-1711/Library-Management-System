@@ -57,7 +57,9 @@ public class AddBook {
 
         b1.addActionListener(e -> {
             Connection con = null;
-            PreparedStatement ps = null;
+            PreparedStatement checkPs = null;
+            PreparedStatement insertPs = null;
+            ResultSet rs = null;
 
             try {
                 String bookName = t1.getText().trim();
@@ -78,15 +80,27 @@ public class AddBook {
 
                 con = DBConnection.getConnection();
 
-                String sql = "INSERT INTO books(name, author, quantity, available_quantity) VALUES (?, ?, ?, ?)";
-                ps = con.prepareStatement(sql);
+                // check duplicate book + author
+                String checkSql = "SELECT * FROM books WHERE TRIM(LOWER(name)) = TRIM(LOWER(?)) AND TRIM(LOWER(author)) = TRIM(LOWER(?))";
+                checkPs = con.prepareStatement(checkSql);
+                checkPs.setString(1, bookName);
+                checkPs.setString(2, author);
+                rs = checkPs.executeQuery();
 
-                ps.setString(1, bookName);
-                ps.setString(2, author);
-                ps.setInt(3, qty);
-                ps.setInt(4, qty);
+                if (rs.next()) {
+                    JOptionPane.showMessageDialog(panel, "This book with same author already exists!");
+                    return;
+                }
 
-                ps.executeUpdate();
+                // insert new book
+                String insertSql = "INSERT INTO books(name, author, quantity, available_quantity) VALUES (?, ?, ?, ?)";
+                insertPs = con.prepareStatement(insertSql);
+                insertPs.setString(1, bookName);
+                insertPs.setString(2, author);
+                insertPs.setInt(3, qty);
+                insertPs.setInt(4, qty);
+
+                insertPs.executeUpdate();
 
                 JOptionPane.showMessageDialog(panel, "Book Added Successfully!");
 
@@ -100,7 +114,9 @@ public class AddBook {
                 JOptionPane.showMessageDialog(panel, "Error: " + ex.getMessage());
                 System.out.println(ex);
             } finally {
-                try { if (ps != null) ps.close(); } catch (Exception ex) {}
+                try { if (rs != null) rs.close(); } catch (Exception ex) {}
+                try { if (checkPs != null) checkPs.close(); } catch (Exception ex) {}
+                try { if (insertPs != null) insertPs.close(); } catch (Exception ex) {}
                 try { if (con != null) con.close(); } catch (Exception ex) {}
             }
         });
