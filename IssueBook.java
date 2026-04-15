@@ -35,53 +35,94 @@ public class IssueBook {
         b1.setBackground(new Color(0,123,255));
         b1.setForeground(Color.WHITE);
 
-        gbc.gridx=0; gbc.gridy=0; gbc.gridwidth=2;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         panel.add(title, gbc);
 
-        gbc.gridwidth=1;
+        gbc.gridwidth = 1;
 
-        gbc.gridx=0; gbc.gridy=1;
+        gbc.gridx = 0; gbc.gridy = 1;
         panel.add(l1, gbc);
-        gbc.gridx=1;
+        gbc.gridx = 1;
         panel.add(t1, gbc);
 
-        gbc.gridx=0; gbc.gridy=2;
+        gbc.gridx = 0; gbc.gridy = 2;
         panel.add(l2, gbc);
-        gbc.gridx=1;
+        gbc.gridx = 1;
         panel.add(t2, gbc);
 
-        gbc.gridx=0; gbc.gridy=3;
+        gbc.gridx = 0; gbc.gridy = 3;
         panel.add(l3, gbc);
-        gbc.gridx=1;
+        gbc.gridx = 1;
         panel.add(t3, gbc);
 
-        gbc.gridx=0; gbc.gridy=4; gbc.gridwidth=2;
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
         panel.add(b1, gbc);
 
         b1.addActionListener(e -> {
-            try {
+            Connection con = null;
+            PreparedStatement checkPs = null;
+            PreparedStatement insertPs = null;
+            PreparedStatement updatePs = null;
+            ResultSet rs = null;
 
-                // VALIDATION
-                if(t1.getText().isEmpty() || t2.getText().isEmpty()) {
+            try {
+                String bookName = t1.getText().trim();
+                String studentName = t2.getText().trim();
+                String issueDate = t3.getText().trim();
+
+                if (bookName.isEmpty() || studentName.isEmpty()) {
                     JOptionPane.showMessageDialog(panel, "Enter all details!");
                     return;
                 }
 
-                Connection con = DBConnection.getConnection();
+                con = DBConnection.getConnection();
 
-                String sql = "INSERT INTO issue(book_name, student_name, date) VALUES (?, ?, ?)";
-                PreparedStatement ps = con.prepareStatement(sql);
+                // 1. Check if book exists and available
+                String checkSql = "SELECT available_quantity FROM books WHERE name = ?";
+                checkPs = con.prepareStatement(checkSql);
+                checkPs.setString(1, bookName);
+                rs = checkPs.executeQuery();
 
-                ps.setString(1, t1.getText());
-                ps.setString(2, t2.getText());
-                ps.setString(3, t3.getText());
+                if (!rs.next()) {
+                    JOptionPane.showMessageDialog(panel, "Book not found!");
+                    return;
+                }
 
-                ps.executeUpdate();
+                int availableQty = rs.getInt("available_quantity");
 
-                JOptionPane.showMessageDialog(panel, "Book Issued!");
+                if (availableQty <= 0) {
+                    JOptionPane.showMessageDialog(panel, "Book is not available!");
+                    return;
+                }
+
+                // 2. Insert into issue table
+                String insertSql = "INSERT INTO issue(book_name, student_name, date) VALUES (?, ?, ?)";
+                insertPs = con.prepareStatement(insertSql);
+                insertPs.setString(1, bookName);
+                insertPs.setString(2, studentName);
+                insertPs.setDate(3, Date.valueOf(issueDate));
+                insertPs.executeUpdate();
+
+                // 3. Reduce available quantity
+                String updateSql = "UPDATE books SET available_quantity = available_quantity - 1 WHERE name = ?";
+                updatePs = con.prepareStatement(updateSql);
+                updatePs.setString(1, bookName);
+                updatePs.executeUpdate();
+
+                JOptionPane.showMessageDialog(panel, "Book Issued Successfully!");
+
+                t1.setText("");
+                t2.setText("");
 
             } catch (Exception ex) {
+                JOptionPane.showMessageDialog(panel, "Error: " + ex.getMessage());
                 System.out.println(ex);
+            } finally {
+                try { if (rs != null) rs.close(); } catch (Exception ex) {}
+                try { if (checkPs != null) checkPs.close(); } catch (Exception ex) {}
+                try { if (insertPs != null) insertPs.close(); } catch (Exception ex) {}
+                try { if (updatePs != null) updatePs.close(); } catch (Exception ex) {}
+                try { if (con != null) con.close(); } catch (Exception ex) {}
             }
         });
 
