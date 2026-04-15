@@ -24,39 +24,71 @@ public class ReturnBook {
         b1.setBackground(new Color(0,123,255));
         b1.setForeground(Color.WHITE);
 
-        gbc.gridx=0; gbc.gridy=0; gbc.gridwidth=2;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         panel.add(title, gbc);
 
-        gbc.gridwidth=1;
+        gbc.gridwidth = 1;
 
-        gbc.gridx=0; gbc.gridy=1;
+        gbc.gridx = 0; gbc.gridy = 1;
         panel.add(l1, gbc);
-        gbc.gridx=1;
+        gbc.gridx = 1;
         panel.add(t1, gbc);
 
-        gbc.gridx=0; gbc.gridy=2; gbc.gridwidth=2;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
         panel.add(b1, gbc);
 
         b1.addActionListener(e -> {
-            try {
+            Connection con = null;
+            PreparedStatement checkPs = null;
+            PreparedStatement deletePs = null;
+            PreparedStatement updatePs = null;
+            ResultSet rs = null;
 
-                if(t1.getText().isEmpty()) {
+            try {
+                String bookName = t1.getText().trim();
+
+                if (bookName.isEmpty()) {
                     JOptionPane.showMessageDialog(panel, "Enter Book Name!");
                     return;
                 }
 
-                Connection con = DBConnection.getConnection();
+                con = DBConnection.getConnection();
 
-                String sql = "DELETE FROM issue WHERE book_name=?";
-                PreparedStatement ps = con.prepareStatement(sql);
-                ps.setString(1, t1.getText());
+                // Check issued record exists or not
+                String checkSql = "SELECT * FROM issue WHERE book_name = ? LIMIT 1";
+                checkPs = con.prepareStatement(checkSql);
+                checkPs.setString(1, bookName);
+                rs = checkPs.executeQuery();
 
-                ps.executeUpdate();
+                if (!rs.next()) {
+                    JOptionPane.showMessageDialog(panel, "This book is not issued!");
+                    return;
+                }
 
-                JOptionPane.showMessageDialog(panel, "Book Returned!");
+                // Delete one issued record
+                String deleteSql = "DELETE FROM issue WHERE book_name = ? LIMIT 1";
+                deletePs = con.prepareStatement(deleteSql);
+                deletePs.setString(1, bookName);
+                deletePs.executeUpdate();
+
+                // Increase available quantity
+                String updateSql = "UPDATE books SET available_quantity = available_quantity + 1 WHERE name = ?";
+                updatePs = con.prepareStatement(updateSql);
+                updatePs.setString(1, bookName);
+                updatePs.executeUpdate();
+
+                JOptionPane.showMessageDialog(panel, "Book Returned Successfully!");
+                t1.setText("");
 
             } catch (Exception ex) {
+                JOptionPane.showMessageDialog(panel, "Error: " + ex.getMessage());
                 System.out.println(ex);
+            } finally {
+                try { if (rs != null) rs.close(); } catch (Exception ex) {}
+                try { if (checkPs != null) checkPs.close(); } catch (Exception ex) {}
+                try { if (deletePs != null) deletePs.close(); } catch (Exception ex) {}
+                try { if (updatePs != null) updatePs.close(); } catch (Exception ex) {}
+                try { if (con != null) con.close(); } catch (Exception ex) {}
             }
         });
 
