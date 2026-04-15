@@ -32,53 +32,76 @@ public class AddBook {
         b1.setBackground(new Color(0,123,255));
         b1.setForeground(Color.WHITE);
 
-        gbc.gridx=0; gbc.gridy=0; gbc.gridwidth=2;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         panel.add(title, gbc);
 
-        gbc.gridwidth=1;
+        gbc.gridwidth = 1;
 
-        gbc.gridx=0; gbc.gridy=1;
+        gbc.gridx = 0; gbc.gridy = 1;
         panel.add(l1, gbc);
-        gbc.gridx=1;
+        gbc.gridx = 1;
         panel.add(t1, gbc);
 
-        gbc.gridx=0; gbc.gridy=2;
+        gbc.gridx = 0; gbc.gridy = 2;
         panel.add(l2, gbc);
-        gbc.gridx=1;
+        gbc.gridx = 1;
         panel.add(t2, gbc);
 
-        gbc.gridx=0; gbc.gridy=3;
+        gbc.gridx = 0; gbc.gridy = 3;
         panel.add(l3, gbc);
-        gbc.gridx=1;
+        gbc.gridx = 1;
         panel.add(t3, gbc);
 
-        gbc.gridx=0; gbc.gridy=4; gbc.gridwidth=2;
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
         panel.add(b1, gbc);
 
         b1.addActionListener(e -> {
-            try {
+            Connection con = null;
+            PreparedStatement ps = null;
 
-                // VALIDATION
-                if(t1.getText().isEmpty() || t2.getText().isEmpty() || t3.getText().isEmpty()) {
+            try {
+                String bookName = t1.getText().trim();
+                String author = t2.getText().trim();
+                String qtyText = t3.getText().trim();
+
+                if (bookName.isEmpty() || author.isEmpty() || qtyText.isEmpty()) {
                     JOptionPane.showMessageDialog(panel, "All fields required!");
                     return;
                 }
 
-                Connection con = DBConnection.getConnection();
+                int qty = Integer.parseInt(qtyText);
 
-                String sql = "INSERT INTO books(name, author, quantity) VALUES (?, ?, ?)";
-                PreparedStatement ps = con.prepareStatement(sql);
+                if (qty <= 0) {
+                    JOptionPane.showMessageDialog(panel, "Quantity must be greater than 0!");
+                    return;
+                }
 
-                ps.setString(1, t1.getText());
-                ps.setString(2, t2.getText());
-                ps.setInt(3, Integer.parseInt(t3.getText()));
+                con = DBConnection.getConnection();
+
+                String sql = "INSERT INTO books(name, author, quantity, available_quantity) VALUES (?, ?, ?, ?)";
+                ps = con.prepareStatement(sql);
+
+                ps.setString(1, bookName);
+                ps.setString(2, author);
+                ps.setInt(3, qty);
+                ps.setInt(4, qty);
 
                 ps.executeUpdate();
 
-                JOptionPane.showMessageDialog(panel, "Book Added!");
+                JOptionPane.showMessageDialog(panel, "Book Added Successfully!");
 
+                t1.setText("");
+                t2.setText("");
+                t3.setText("");
+
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(panel, "Quantity must be a number!");
             } catch (Exception ex) {
+                JOptionPane.showMessageDialog(panel, "Error: " + ex.getMessage());
                 System.out.println(ex);
+            } finally {
+                try { if (ps != null) ps.close(); } catch (Exception ex) {}
+                try { if (con != null) con.close(); } catch (Exception ex) {}
             }
         });
 
