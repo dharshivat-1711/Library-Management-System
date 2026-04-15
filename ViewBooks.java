@@ -10,7 +10,7 @@ public class ViewBooks {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(18,18,40));
 
-        String[] cols = {"ID","Name","Author","Quantity"};
+        String[] cols = {"ID","Name","Author","Available Quantity"};
         DefaultTableModel model = new DefaultTableModel(cols,0);
 
         JTable table = new JTable(model);
@@ -19,7 +19,6 @@ public class ViewBooks {
 
         JScrollPane sp = new JScrollPane(table);
 
-        // SEARCH BAR
         JPanel top = new JPanel();
         JTextField search = new JTextField(15);
         JButton btn = new JButton("Search");
@@ -37,14 +36,16 @@ public class ViewBooks {
         // LOAD DATA
         try {
             Connection con = DBConnection.getConnection();
-            ResultSet rs = con.prepareStatement("SELECT * FROM books").executeQuery();
+            ResultSet rs = con.prepareStatement(
+                "SELECT id, name, author, available_quantity FROM books WHERE available_quantity > 0"
+            ).executeQuery();
 
             while(rs.next()) {
                 model.addRow(new Object[]{
                     rs.getInt("id"),
                     rs.getString("name"),
                     rs.getString("author"),
-                    rs.getInt("quantity")
+                    rs.getInt("available_quantity")
                 });
             }
 
@@ -58,8 +59,10 @@ public class ViewBooks {
                 model.setRowCount(0);
 
                 Connection con = DBConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement("SELECT * FROM books WHERE name LIKE ?");
-                ps.setString(1, "%" + search.getText() + "%");
+                PreparedStatement ps = con.prepareStatement(
+                    "SELECT id, name, author, available_quantity FROM books WHERE name LIKE ? AND available_quantity > 0"
+                );
+                ps.setString(1, "%" + search.getText().trim() + "%");
 
                 ResultSet rs = ps.executeQuery();
 
@@ -68,7 +71,7 @@ public class ViewBooks {
                         rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("author"),
-                        rs.getInt("quantity")
+                        rs.getInt("available_quantity")
                     });
                 }
 
